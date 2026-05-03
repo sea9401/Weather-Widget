@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
@@ -20,6 +21,14 @@ namespace WeatherWidget
         }
     }
 
+    class CityInfo
+    {
+        public string Name;
+        public double Lat;
+        public double Lon;
+        public CityInfo(string n, double la, double lo) { Name = n; Lat = la; Lon = lo; }
+    }
+
     public class WeatherForm : Form
     {
         string _lat = "37.5665";
@@ -28,6 +37,134 @@ namespace WeatherWidget
 
         int  _weatherCode = -1;
         bool _isDay       = true;
+
+        static readonly Tuple<string, CityInfo[]>[] Regions = new[]
+        {
+            Tuple.Create("서울 / 인천 / 경기", new[] {
+                new CityInfo("서울",       37.5665, 126.9780),
+                new CityInfo("인천",       37.4563, 126.7052),
+                new CityInfo("수원",       37.2636, 127.0286),
+                new CityInfo("성남",       37.4200, 127.1267),
+                new CityInfo("성남 분당",  37.3826, 127.1190),
+                new CityInfo("고양",       37.6584, 126.8320),
+                new CityInfo("용인",       37.2411, 127.1776),
+                new CityInfo("부천",       37.5034, 126.7660),
+                new CityInfo("안산",       37.3219, 126.8309),
+                new CityInfo("안양",       37.3943, 126.9568),
+                new CityInfo("의정부",     37.7381, 127.0337),
+                new CityInfo("화성",       37.1995, 126.8311),
+                new CityInfo("평택",       36.9921, 127.1129),
+                new CityInfo("시흥",       37.3800, 126.8030),
+                new CityInfo("파주",       37.7600, 126.7800),
+                new CityInfo("김포",       37.6152, 126.7156),
+                new CityInfo("광명",       37.4781, 126.8645),
+                new CityInfo("남양주",     37.6360, 127.2160),
+                new CityInfo("하남",       37.5392, 127.2148),
+                new CityInfo("구리",       37.5944, 127.1296),
+                new CityInfo("이천",       37.2722, 127.4350),
+                new CityInfo("안성",       37.0080, 127.2797),
+                new CityInfo("오산",       37.1499, 127.0772),
+            }),
+            Tuple.Create("강원", new[] {
+                new CityInfo("춘천", 37.8813, 127.7298),
+                new CityInfo("원주", 37.3422, 127.9202),
+                new CityInfo("강릉", 37.7519, 128.8761),
+                new CityInfo("동해", 37.5247, 129.1142),
+                new CityInfo("속초", 38.2070, 128.5918),
+                new CityInfo("삼척", 37.4499, 129.1655),
+                new CityInfo("태백", 37.1641, 128.9856),
+            }),
+            Tuple.Create("충북", new[] {
+                new CityInfo("청주", 36.6424, 127.4890),
+                new CityInfo("충주", 36.9910, 127.9259),
+                new CityInfo("제천", 37.1326, 128.1909),
+            }),
+            Tuple.Create("대전 / 세종 / 충남", new[] {
+                new CityInfo("대전", 36.3504, 127.3845),
+                new CityInfo("세종", 36.4800, 127.2890),
+                new CityInfo("천안", 36.8151, 127.1139),
+                new CityInfo("아산", 36.7898, 127.0019),
+                new CityInfo("서산", 36.7848, 126.4503),
+                new CityInfo("공주", 36.4467, 127.1190),
+                new CityInfo("보령", 36.3334, 126.6128),
+            }),
+            Tuple.Create("전북", new[] {
+                new CityInfo("전주", 35.8242, 127.1480),
+                new CityInfo("군산", 35.9676, 126.7370),
+                new CityInfo("익산", 35.9483, 126.9577),
+                new CityInfo("정읍", 35.5697, 126.8559),
+                new CityInfo("남원", 35.4163, 127.3905),
+            }),
+            Tuple.Create("광주 / 전남", new[] {
+                new CityInfo("광주", 35.1595, 126.8526),
+                new CityInfo("목포", 34.8118, 126.3922),
+                new CityInfo("여수", 34.7604, 127.6622),
+                new CityInfo("순천", 34.9506, 127.4872),
+                new CityInfo("나주", 35.0160, 126.7108),
+                new CityInfo("광양", 34.9407, 127.6958),
+            }),
+            Tuple.Create("대구 / 경북", new[] {
+                new CityInfo("대구", 35.8714, 128.6014),
+                new CityInfo("포항", 36.0190, 129.3435),
+                new CityInfo("경주", 35.8562, 129.2247),
+                new CityInfo("안동", 36.5684, 128.7294),
+                new CityInfo("구미", 36.1196, 128.3445),
+                new CityInfo("영주", 36.8056, 128.6240),
+                new CityInfo("김천", 36.1397, 128.1136),
+                new CityInfo("상주", 36.4108, 128.1591),
+            }),
+            Tuple.Create("부산 / 울산 / 경남", new[] {
+                new CityInfo("부산", 35.1796, 129.0756),
+                new CityInfo("울산", 35.5384, 129.3114),
+                new CityInfo("창원", 35.2280, 128.6811),
+                new CityInfo("진주", 35.1800, 128.1076),
+                new CityInfo("김해", 35.2342, 128.8890),
+                new CityInfo("양산", 35.3350, 129.0378),
+                new CityInfo("거제", 34.8806, 128.6212),
+                new CityInfo("통영", 34.8544, 128.4331),
+                new CityInfo("사천", 35.0036, 128.0640),
+            }),
+            Tuple.Create("제주", new[] {
+                new CityInfo("제주",   33.4996, 126.5312),
+                new CityInfo("서귀포", 33.2541, 126.5601),
+            }),
+        };
+
+        static string ConfigPath
+        {
+            get
+            {
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "WeatherWidget");
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                return Path.Combine(dir, "city.txt");
+            }
+        }
+
+        static bool TryLoadCity(out string name, out string lat, out string lon)
+        {
+            name = null; lat = null; lon = null;
+            try
+            {
+                if (!File.Exists(ConfigPath)) return false;
+                var parts = File.ReadAllText(ConfigPath).Split('|');
+                if (parts.Length < 3) return false;
+                name = parts[0]; lat = parts[1]; lon = parts[2];
+                return !string.IsNullOrEmpty(name);
+            }
+            catch { return false; }
+        }
+
+        static void SaveCity(string name, string lat, string lon)
+        {
+            try { File.WriteAllText(ConfigPath, name + "|" + lat + "|" + lon); } catch { }
+        }
+
+        static void ClearSavedCity()
+        {
+            try { if (File.Exists(ConfigPath)) File.Delete(ConfigPath); } catch { }
+        }
 
         const int CORNER_RADIUS = 18;
 
@@ -152,7 +289,19 @@ namespace WeatherWidget
             LoadTheme();
             InitForm();
             StartClock();
-            FetchCurrentLocation();
+
+            string sn, sl, so;
+            if (TryLoadCity(out sn, out sl, out so))
+            {
+                _lat = sl;
+                _lon = so;
+                lblCity.Text = sn;
+                FetchData();
+            }
+            else
+            {
+                FetchCurrentLocation();
+            }
         }
 
         void InitForm()
@@ -270,6 +419,26 @@ namespace WeatherWidget
             cm.MenuItems.Add(new MenuItem("새로고침", (s, e) => FetchData()));
             cm.MenuItems.Add(new MenuItem("-"));
 
+            var locItem = new MenuItem("위치 변경");
+            locItem.MenuItems.Add(new MenuItem("자동 감지 (현재 IP 기반)", (s, e) =>
+            {
+                ClearSavedCity();
+                FetchCurrentLocation();
+            }));
+            locItem.MenuItems.Add(new MenuItem("-"));
+            foreach (var region in Regions)
+            {
+                var rItem = new MenuItem(region.Item1);
+                foreach (var city in region.Item2)
+                {
+                    var c = city;
+                    rItem.MenuItems.Add(new MenuItem(c.Name, (s, e) => SetCity(c)));
+                }
+                locItem.MenuItems.Add(rItem);
+            }
+            cm.MenuItems.Add(locItem);
+            cm.MenuItems.Add(new MenuItem("-"));
+
             var topItem = new MenuItem("항상 위  ✓");
             topItem.Click += (s, e) => {
                 this.TopMost = !this.TopMost;
@@ -282,6 +451,17 @@ namespace WeatherWidget
             this.ContextMenu = cm;
             foreach (Control c in this.Controls)
                 c.ContextMenu = cm;
+        }
+
+        void SetCity(CityInfo c)
+        {
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            _lat = c.Lat.ToString(inv);
+            _lon = c.Lon.ToString(inv);
+            _tz  = "Asia/Seoul";
+            lblCity.Text = c.Name;
+            SaveCity(c.Name, _lat, _lon);
+            FetchData();
         }
 
         void DragDown(object s, MouseEventArgs e)
