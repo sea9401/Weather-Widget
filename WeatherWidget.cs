@@ -317,9 +317,9 @@ namespace WeatherWidget
         }
 
         Label lblCity, lblTime, lblIcon, lblTemp, lblDesc;
-        Label lblFeels, lblHum, lblAQI, lblAQINum;
-        Label lblPM25, lblPM25Status, lblPM10, lblPM10Status, lblUpdate;
-        Label lblAQTitle, lblPMTitle;
+        Label lblFeels, lblHum, lblUpdate;
+        Label lblPM10Title, lblPM10Status, lblPM10Num;
+        Label lblPM25Title, lblPM25Status, lblPM25Num;
 
         bool  dragging;
         Point lastCursor;
@@ -407,16 +407,14 @@ namespace WeatherWidget
             lblFeels = Lbl("",              5, 187, 150, 20, fSub,  _fg3,     ContentAlignment.MiddleRight);
             lblHum   = Lbl("",           155, 187, 150, 20, fSub,  _fg3,     ContentAlignment.MiddleLeft);
 
-            lblAQTitle = Lbl("공기질",   0, 227, 155, 17, fAQT, _fg2, ContentAlignment.MiddleCenter);
-            lblPMTitle = Lbl("미세먼지", 158, 227, 150, 17, fAQT, _fg2, ContentAlignment.MiddleCenter);
+            lblPM10Title = Lbl("미세먼지",   0, 227, 155, 17, fAQT, _fg2, ContentAlignment.MiddleCenter);
+            lblPM25Title = Lbl("초미세먼지", 155, 227, 155, 17, fAQT, _fg2, ContentAlignment.MiddleCenter);
 
-            lblAQI    = Lbl("--",     0, 246, 155, 26, fAQV, Color.FromArgb(34,197,94), ContentAlignment.MiddleCenter);
-            lblAQINum = Lbl("AQI --", 0, 274, 155, 17, fSub,  _fg3, ContentAlignment.MiddleCenter);
+            lblPM10Status = Lbl("--",       0, 246, 155, 26, fAQV, _fg2, ContentAlignment.MiddleCenter);
+            lblPM10Num    = Lbl("PM10 --",  0, 274, 155, 17, fSub, _fg3, ContentAlignment.MiddleCenter);
 
-            lblPM25       = Lbl("초미세먼지  --", 160, 247, 105, 20, fSub, _fg2, ContentAlignment.MiddleLeft);
-            lblPM25Status = Lbl("--",             218, 247,  82, 20, fSub, _fg3, ContentAlignment.MiddleRight);
-            lblPM10       = Lbl("미세먼지  --",   160, 277, 105, 20, fSub, _fg2, ContentAlignment.MiddleLeft);
-            lblPM10Status = Lbl("--",             218, 277,  82, 20, fSub, _fg3, ContentAlignment.MiddleRight);
+            lblPM25Status = Lbl("--",        155, 246, 155, 26, fAQV, _fg2, ContentAlignment.MiddleCenter);
+            lblPM25Num    = Lbl("PM2.5 --",  155, 274, 155, 17, fSub, _fg3, ContentAlignment.MiddleCenter);
 
             lblUpdate = Lbl("우클릭: 메뉴", 0, 328, 310, 16, fFoot, _fg3, ContentAlignment.MiddleCenter);
         }
@@ -429,13 +427,12 @@ namespace WeatherWidget
             lblDesc.ForeColor    = _fg2;
             lblFeels.ForeColor   = _fg3;
             lblHum.ForeColor     = _fg3;
-            lblIcon.ForeColor    = _iconCol;
-            lblAQTitle.ForeColor = _fg2;
-            lblPMTitle.ForeColor = _fg2;
-            lblAQINum.ForeColor  = _fg3;
-            lblPM25.ForeColor    = _fg2;
-            lblPM10.ForeColor    = _fg2;
-            lblUpdate.ForeColor  = _fg3;
+            lblIcon.ForeColor      = _iconCol;
+            lblPM10Title.ForeColor = _fg2;
+            lblPM25Title.ForeColor = _fg2;
+            lblPM10Num.ForeColor   = _fg3;
+            lblPM25Num.ForeColor   = _fg3;
+            lblUpdate.ForeColor    = _fg3;
         }
 
         Label Lbl(string text, int x, int y, int w, int h,
@@ -848,7 +845,7 @@ namespace WeatherWidget
 
             string aUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + _lat
                 + "&longitude=" + _lon
-                + "&current=pm10,pm2_5,european_aqi"
+                + "&current=pm10,pm2_5"
                 + "&timezone=" + tz;
 
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
@@ -903,28 +900,20 @@ namespace WeatherWidget
 
         void UpdateAir(string j)
         {
-            int    aqi = (int)Num(j, "european_aqi");
             double p25 = Num(j, "pm2_5");
             double p10 = Num(j, "pm10");
-
-            string st; Color cl;
-            AQIInfo(aqi, out st, out cl);
-
-            lblAQI.ForeColor = cl;
-            lblAQI.Text    = st;
-            lblAQINum.Text = "AQI " + aqi;
-
-            string ps25; Color pc25;
-            PMInfo(p25, true, out ps25, out pc25);
-            lblPM25Status.ForeColor = pc25;
-            lblPM25Status.Text      = ps25;
-            lblPM25.Text            = "초미세먼지  " + (int)Math.Round(p25);
 
             string ps10; Color pc10;
             PMInfo(p10, false, out ps10, out pc10);
             lblPM10Status.ForeColor = pc10;
             lblPM10Status.Text      = ps10;
-            lblPM10.Text            = "미세먼지  " + (int)Math.Round(p10);
+            lblPM10Num.Text         = "PM10  " + (int)Math.Round(p10);
+
+            string ps25; Color pc25;
+            PMInfo(p25, true, out ps25, out pc25);
+            lblPM25Status.ForeColor = pc25;
+            lblPM25Status.Text      = ps25;
+            lblPM25Num.Text         = "PM2.5  " + (int)Math.Round(p25);
         }
 
         static double Num(string j, string key)
@@ -969,16 +958,6 @@ namespace WeatherWidget
             if (t <= 28) return Color.FromArgb(253, 230, 138);
             if (t <= 35) return Color.FromArgb(253, 186, 116);
             return Color.FromArgb(252, 165, 165);
-        }
-
-        static void AQIInfo(int a, out string s, out Color c)
-        {
-            if      (a <= 20)  { s = "매우 좋음"; c = Color.FromArgb( 34, 197,  94); }
-            else if (a <= 40)  { s = "좋음";     c = Color.FromArgb(134, 239, 172); }
-            else if (a <= 60)  { s = "보통";     c = Color.FromArgb(251, 191,  36); }
-            else if (a <= 80)  { s = "나쁨";     c = Color.FromArgb(249, 115,  22); }
-            else if (a <= 100) { s = "매우 나쁨"; c = Color.FromArgb(239,  68,  68); }
-            else               { s = "위험";     c = Color.FromArgb(168,  85, 247); }
         }
 
         static void PMInfo(double val, bool isPM25, out string s, out Color c)
