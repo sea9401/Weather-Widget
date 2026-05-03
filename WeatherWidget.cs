@@ -166,6 +166,47 @@ namespace WeatherWidget
             try { if (File.Exists(ConfigPath)) File.Delete(ConfigPath); } catch { }
         }
 
+        static string OpacityConfigPath
+        {
+            get
+            {
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "WeatherWidget");
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                return Path.Combine(dir, "opacity.txt");
+            }
+        }
+
+        static double LoadOpacity()
+        {
+            try
+            {
+                if (!File.Exists(OpacityConfigPath)) return 0.95;
+                double v;
+                if (double.TryParse(File.ReadAllText(OpacityConfigPath).Trim(),
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out v))
+                {
+                    if (v < 0.3) v = 0.3;
+                    if (v > 1.0) v = 1.0;
+                    return v;
+                }
+            }
+            catch { }
+            return 0.95;
+        }
+
+        static void SaveOpacity(double v)
+        {
+            try
+            {
+                File.WriteAllText(OpacityConfigPath,
+                    v.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+            catch { }
+        }
+
         const int CORNER_RADIUS = 18;
 
         [DllImport("gdi32.dll")] static extern IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int cx, int cy);
@@ -284,6 +325,9 @@ namespace WeatherWidget
         Point lastCursor;
         Timer clockTimer, dataTimer;
 
+        static readonly double[] OpacityLevels = { 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0 };
+        MenuItem[] _opacityItems;
+
         public WeatherForm()
         {
             LoadTheme();
@@ -310,7 +354,7 @@ namespace WeatherWidget
             this.FormBorderStyle  = FormBorderStyle.None;
             this.TopMost          = true;
             this.BackColor        = Color.FromArgb(15, 23, 42);
-            this.Opacity          = 0.95;
+            this.Opacity          = LoadOpacity();
             this.ClientSize       = new Size(310, 355);
             this.StartPosition    = FormStartPosition.Manual;
 
@@ -439,6 +483,20 @@ namespace WeatherWidget
             cm.MenuItems.Add(locItem);
             cm.MenuItems.Add(new MenuItem("-"));
 
+            var opItem = new MenuItem("투명도");
+            _opacityItems = new MenuItem[OpacityLevels.Length];
+            for (int i = 0; i < OpacityLevels.Length; i++)
+            {
+                var op = OpacityLevels[i];
+                var label = ((int)Math.Round(op * 100)) + " %";
+                var mi = new MenuItem(label, (s, e) => SetOpacity(op));
+                _opacityItems[i] = mi;
+                opItem.MenuItems.Add(mi);
+            }
+            UpdateOpacityChecks();
+            cm.MenuItems.Add(opItem);
+            cm.MenuItems.Add(new MenuItem("-"));
+
             var topItem = new MenuItem("항상 위  ✓");
             topItem.Click += (s, e) => {
                 this.TopMost = !this.TopMost;
@@ -462,6 +520,20 @@ namespace WeatherWidget
             lblCity.Text = c.Name;
             SaveCity(c.Name, _lat, _lon);
             FetchData();
+        }
+
+        void SetOpacity(double v)
+        {
+            this.Opacity = v;
+            SaveOpacity(v);
+            UpdateOpacityChecks();
+        }
+
+        void UpdateOpacityChecks()
+        {
+            if (_opacityItems == null) return;
+            for (int i = 0; i < OpacityLevels.Length; i++)
+                _opacityItems[i].Checked = Math.Abs(this.Opacity - OpacityLevels[i]) < 0.005;
         }
 
         void DragDown(object s, MouseEventArgs e)
